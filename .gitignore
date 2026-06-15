@@ -2,7 +2,6 @@
 **/target/
 **/*.class
 **/*.jar
-**/application.properties
 !hotel-management-eureka/src/main/resources/application.properties
 uploads/
 .env
