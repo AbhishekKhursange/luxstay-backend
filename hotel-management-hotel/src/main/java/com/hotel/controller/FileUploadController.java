@@ -1,48 +1,43 @@
 package com.hotel.controller;
 
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.*;
 import java.util.Map;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/upload")
 public class FileUploadController {
 
-    @Value("${upload.dir:uploads/}")
-    private String uploadDir;
+    private final Cloudinary cloudinary;
 
-    @Value("${server.port:8083}")
-    private String serverPort;
+    public FileUploadController(
+            @Value("${cloudinary.cloud-name}") String cloudName,
+            @Value("${cloudinary.api-key}") String apiKey,
+            @Value("${cloudinary.api-secret}") String apiSecret) {
+        this.cloudinary = new Cloudinary(ObjectUtils.asMap(
+                "cloud_name", cloudName,
+                "api_key", apiKey,
+                "api_secret", apiSecret
+        ));
+    }
 
+    @SuppressWarnings("unchecked")
     @PostMapping("/image")
     public ResponseEntity<Map<String, String>> uploadImage(
             @RequestParam("file") MultipartFile file) throws IOException {
 
-        // Create uploads folder if it doesn't exist
-        Path uploadPath = Paths.get(uploadDir);
-        if (!Files.exists(uploadPath)) {
-            Files.createDirectories(uploadPath);
-        }
+    	Map<String, Object> uploadResult = cloudinary.uploader().upload(
+                file.getBytes(),
+                ObjectUtils.asMap("folder", "luxstay")
+        );
 
-        // Generate unique filename to avoid conflicts
-        String originalName = file.getOriginalFilename()
-                .replaceAll("[^a-zA-Z0-9._-]", "_");
-        String filename = UUID.randomUUID() + "_" + originalName;
-
-        // Save file to disk
-        Path filePath = uploadPath.resolve(filename);
-        Files.copy(file.getInputStream(), filePath,
-                StandardCopyOption.REPLACE_EXISTING);
-
-        // Return the public URL
-        String imageUrl = "http://localhost:" + serverPort + "/uploads/" + filename;
-
+        String imageUrl = (String) uploadResult.get("secure_url");
         return ResponseEntity.ok(Map.of("imageUrl", imageUrl));
     }
 }
